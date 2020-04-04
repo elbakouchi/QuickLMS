@@ -3,71 +3,24 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\UpdatePasswordRequest;
+use Gate;
 use Illuminate\Http\Request;
-use Hash;
-use Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class ChangePasswordController extends Controller
 {
-
-    /**
-     * Create a new controller instance.
-     */
-    public function __construct()
+    public function edit()
     {
-        $this->middleware('auth');
+        abort_if(Gate::denies('profile_password_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        return view('auth.passwords.edit');
     }
 
-    /**
-     * Where to redirect users after password is changed.
-     *
-     * @var string $redirectTo
-     */
-    protected $redirectTo = '/change_password';
-
-    /**
-     * Change password form
-     *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
-     */
-    public function showChangePasswordForm()
+    public function update(UpdatePasswordRequest $request)
     {
-        $user = Auth::getUser();
+        auth()->user()->update($request->validated());
 
-        return view('auth.change_password', compact('user'));
-    }
-
-    /**
-     * Change password.
-     *
-     * @param Request $request
-     * @return $this|\Illuminate\Http\RedirectResponse
-     */
-    public function changePassword(Request $request)
-    {
-        $user = Auth::getUser();
-        $this->validator($request->all())->validate();
-        if (Hash::check($request->get('current_password'), $user->password)) {
-            $user->password = $request->get('new_password');
-            $user->save();
-            return redirect($this->redirectTo)->with('success', 'Password change successfully!');
-        } else {
-            return redirect()->back()->withErrors('Current password is incorrect');
-        }
-    }
-
-    /**
-     * Get a validator for an incoming change password request.
-     *
-     * @param  array  $data
-     * @return \Illuminate\Contracts\Validation\Validator
-     */
-    protected function validator(array $data)
-    {
-        return Validator::make($data, [
-            'current_password' => 'required',
-            'new_password' => 'required|min:6|confirmed',
-        ]);
+        return redirect()->route('profile.password.edit')->with('message', __('global.change_password_success'));
     }
 }

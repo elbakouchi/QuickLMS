@@ -1,102 +1,85 @@
 <?php
+
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Auth;
+use Spatie\MediaLibrary\HasMedia\HasMedia;
+use Spatie\MediaLibrary\HasMedia\HasMediaTrait;
+use Spatie\MediaLibrary\Models\Media;
 
-/**
- * Class Course
- *
- * @package App
- * @property string $title
- * @property string $slug
- * @property text $description
- * @property decimal $price
- * @property string $course_image
- * @property string $start_date
- * @property tinyInteger $published
-*/
-class Course extends Model
+class Course extends Model implements HasMedia
 {
-    use SoftDeletes;
+    use SoftDeletes, HasMediaTrait;
 
-    protected $fillable = ['title', 'slug', 'description', 'price', 'course_image', 'start_date', 'published'];
-    
+    public $table = 'courses';
 
-    /**
-     * Set attribute to money format
-     * @param $input
-     */
-    public function setPriceAttribute($input)
+    protected $appends = [
+        'joined_files',
+        'featured_photo',
+    ];
+
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    protected $fillable = [
+        'slug',
+        'title',
+        'price',
+        'status',
+        'content',
+        'topic_id',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'description',
+        'free_course',
+    ];
+
+    public function registerMediaConversions(Media $media = null)
     {
-        $this->attributes['price'] = $input ? $input : null;
+        $this->addMediaConversion('thumb')->width(50)->height(50);
+
     }
 
-    /**
-     * Set attribute to date format
-     * @param $input
-     */
-    public function setStartDateAttribute($input)
+    public function courseLessons()
     {
-        if ($input != null && $input != '') {
-            $this->attributes['start_date'] = Carbon::createFromFormat(config('app.date_format'), $input)->format('Y-m-d');
-        } else {
-            $this->attributes['start_date'] = null;
+        return $this->hasMany(Lesson::class, 'course_id', 'id');
+
+    }
+
+    public function getJoinedFilesAttribute()
+    {
+        return $this->getMedia('joined_files');
+
+    }
+
+    public function getFeaturedPhotoAttribute()
+    {
+        $file = $this->getMedia('featured_photo')->last();
+
+        if ($file) {
+            $file->url       = $file->getUrl();
+            $file->thumbnail = $file->getUrl('thumb');
         }
+
+        return $file;
+
     }
 
-    /**
-     * Get attribute from date format
-     * @param $input
-     *
-     * @return string
-     */
-    public function getStartDateAttribute($input)
+    public function authors()
     {
-        $zeroDate = str_replace(['Y', 'm', 'd'], ['0000', '00', '00'], config('app.date_format'));
+        return $this->belongsToMany(User::class);
 
-        if ($input != $zeroDate && $input != null) {
-            return Carbon::createFromFormat('Y-m-d', $input)->format(config('app.date_format'));
-        } else {
-            return '';
-        }
-    }
-    
-    public function teachers()
-    {
-        return $this->belongsToMany(User::class, 'course_user');
     }
 
-    public function students()
+    public function topic()
     {
-        return $this->belongsToMany(User::class, 'course_student')->withTimestamps()->withPivot(['rating']);
-    }
+        return $this->belongsTo(Topic::class, 'topic_id');
 
-    public function lessons()
-    {
-        return $this->hasMany(Lesson::class)->orderBy('position');
-    }
-
-    public function publishedLessons()
-    {
-        return $this->hasMany(Lesson::class)->orderBy('position')->where('published', 1);
-    }
-
-    public function scopeOfTeacher($query)
-    {
-        if (!Auth::user()->isAdmin()) {
-            return $query->whereHas('teachers', function($q) {
-                $q->where('user_id', Auth::user()->id);
-            });
-        }
-        return $query;
-    }
-
-    public function getRatingAttribute()
-    {
-        return number_format(\DB::table('course_student')->where('course_id', $this->attributes['id'])->average('rating'), 2);
     }
 
 }

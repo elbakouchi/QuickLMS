@@ -2,163 +2,89 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreUsersRequest;
-use App\Http\Requests\Admin\UpdateUsersRequest;
+use App\Http\Requests\MassDestroyUserRequest;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Role;
+use App\User;
+use Gate;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
 {
-    /**
-     * Display a listing of User.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        if (! Gate::allows('user_access')) {
-            return abort(401);
-        }
+        abort_if(Gate::denies('user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-
-                $users = User::all();
+        $users = User::all();
 
         return view('admin.users.index', compact('users'));
     }
 
-    /**
-     * Show the form for creating new User.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
-        if (! Gate::allows('user_create')) {
-            return abort(401);
-        }
-        $roles = \App\Role::get()->pluck('title', 'id');
+        abort_if(Gate::denies('user_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $roles = Role::all()->pluck('title', 'id');
 
         return view('admin.users.create', compact('roles'));
     }
 
-    /**
-     * Store a newly created User in storage.
-     *
-     * @param  \App\Http\Requests\StoreUsersRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(StoreUsersRequest $request)
+    public function store(StoreUserRequest $request)
     {
-        if (! Gate::allows('user_create')) {
-            return abort(401);
-        }
         $user = User::create($request->all());
-        $user->role()->sync(array_filter((array)$request->input('role')));
-
-
+        $user->roles()->sync($request->input('roles', []));
 
         return redirect()->route('admin.users.index');
+
     }
 
-
-    /**
-     * Show the form for editing User.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
+    public function edit(User $user)
     {
-        if (! Gate::allows('user_edit')) {
-            return abort(401);
-        }
-        $roles = \App\Role::get()->pluck('title', 'id');
+        abort_if(Gate::denies('user_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $user = User::findOrFail($id);
+        $roles = Role::all()->pluck('title', 'id');
 
-        return view('admin.users.edit', compact('user', 'roles'));
+        $user->load('roles');
+
+        return view('admin.users.edit', compact('roles', 'user'));
     }
 
-    /**
-     * Update User in storage.
-     *
-     * @param  \App\Http\Requests\UpdateUsersRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(UpdateUsersRequest $request, $id)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        if (! Gate::allows('user_edit')) {
-            return abort(401);
-        }
-        $user = User::findOrFail($id);
         $user->update($request->all());
-        $user->role()->sync(array_filter((array)$request->input('role')));
-
-
+        $user->roles()->sync($request->input('roles', []));
 
         return redirect()->route('admin.users.index');
+
     }
 
-
-    /**
-     * Display User.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
+    public function show(User $user)
     {
-        if (! Gate::allows('user_view')) {
-            return abort(401);
-        }
-        $roles = \App\Role::get()->pluck('title', 'id');$courses = \App\Course::whereHas('teachers',
-                    function ($query) use ($id) {
-                        $query->where('id', $id);
-                    })->get();
+        abort_if(Gate::denies('user_show'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $user = User::findOrFail($id);
+        $user->load('roles', 'authorCourses');
 
-        return view('admin.users.show', compact('user', 'courses'));
+        return view('admin.users.show', compact('user'));
     }
 
-
-    /**
-     * Remove User from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
+    public function destroy(User $user)
     {
-        if (! Gate::allows('user_delete')) {
-            return abort(401);
-        }
-        $user = User::findOrFail($id);
+        abort_if(Gate::denies('user_delete'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $user->delete();
 
-        return redirect()->route('admin.users.index');
+        return back();
+
     }
 
-    /**
-     * Delete all selected User at once.
-     *
-     * @param Request $request
-     */
-    public function massDestroy(Request $request)
+    public function massDestroy(MassDestroyUserRequest $request)
     {
-        if (! Gate::allows('user_delete')) {
-            return abort(401);
-        }
-        if ($request->input('ids')) {
-            $entries = User::whereIn('id', $request->input('ids'))->get();
+        User::whereIn('id', request('ids'))->delete();
 
-            foreach ($entries as $entry) {
-                $entry->delete();
-            }
-        }
+        return response(null, Response::HTTP_NO_CONTENT);
+
     }
-
 }
