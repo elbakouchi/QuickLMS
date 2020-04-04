@@ -1,116 +1,187 @@
-@inject('request', 'Illuminate\Http\Request')
-@extends('layouts.app')
-
+@extends('layouts.admin')
 @section('content')
-    <h3 class="page-title">@lang('global.lessons.title')</h3>
-    @can('lesson_create')
-    <p>
-        <a href="{{ route('admin.lessons.create') }}" class="btn btn-success">@lang('global.app_add_new')</a>
-        
-    </p>
-    @endcan
-
-    <p>
-        <ul class="list-inline">
-            <li><a href="{{ route('admin.lessons.index') }}" style="{{ request('show_deleted') == 1 ? '' : 'font-weight: 700' }}">All</a></li> |
-            <li><a href="{{ route('admin.lessons.index') }}?show_deleted=1" style="{{ request('show_deleted') == 1 ? 'font-weight: 700' : '' }}">Trash</a></li>
-        </ul>
-    </p>
-    
-
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            @lang('global.app_list')
+@can('lesson_create')
+    <div style="margin-bottom: 10px;" class="row">
+        <div class="col-lg-12">
+            <a class="btn btn-success" href="{{ route("admin.lessons.create") }}">
+                {{ trans('global.add') }} {{ trans('cruds.lesson.title_singular') }}
+            </a>
         </div>
+    </div>
+@endcan
+<div class="card">
+    <div class="card-header">
+        {{ trans('cruds.lesson.title_singular') }} {{ trans('global.list') }}
+    </div>
 
-        <div class="panel-body table-responsive">
-            <table class="table table-bordered table-striped {{ count($lessons) > 0 ? 'datatable' : '' }} @can('lesson_delete') @if ( request('show_deleted') != 1 ) dt-select @endif @endcan">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class=" table table-bordered table-striped table-hover datatable datatable-Lesson">
                 <thead>
                     <tr>
-                        @can('lesson_delete')
-                            @if ( request('show_deleted') != 1 )<th style="text-align:center;"><input type="checkbox" id="select-all" /></th>@endif
-                        @endcan
+                        <th width="10">
 
-                        <th>@lang('global.lessons.fields.course')</th>
-                        <th>@lang('global.lessons.fields.title')</th>
-                        <th>@lang('global.lessons.fields.position')</th>
-                        <th>@lang('global.lessons.fields.free-lesson')</th>
-                        <th>@lang('global.lessons.fields.published')</th>
-                        @if( request('show_deleted') == 1 )
-                        <th>&nbsp;</th>
-                        @else
-                        <th>&nbsp;</th>
-                        @endif
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.id') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.title') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.slug') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.description') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.price') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.free_course') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.joined_files') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.featured_photo') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.status') }}
+                        </th>
+                        <th>
+                            {{ trans('cruds.lesson.fields.course') }}
+                        </th>
+                        <th>
+                            &nbsp;
+                        </th>
                     </tr>
                 </thead>
-                
                 <tbody>
-                    @if (count($lessons) > 0)
-                        @foreach ($lessons as $lesson)
-                            <tr data-entry-id="{{ $lesson->id }}">
-                                @can('lesson_delete')
-                                    @if ( request('show_deleted') != 1 )<td></td>@endif
+                    @foreach($lessons as $key => $lesson)
+                        <tr data-entry-id="{{ $lesson->id }}">
+                            <td>
+
+                            </td>
+                            <td>
+                                {{ $lesson->id ?? '' }}
+                            </td>
+                            <td>
+                                {{ $lesson->title ?? '' }}
+                            </td>
+                            <td>
+                                {{ $lesson->slug ?? '' }}
+                            </td>
+                            <td>
+                                {{ $lesson->description ?? '' }}
+                            </td>
+                            <td>
+                                {{ $lesson->price ?? '' }}
+                            </td>
+                            <td>
+                                <span style="display:none">{{ $lesson->free_course ?? '' }}</span>
+                                <input type="checkbox" disabled="disabled" {{ $lesson->free_course ? 'checked' : '' }}>
+                            </td>
+                            <td>
+                                @foreach($lesson->joined_files as $key => $media)
+                                    <a href="{{ $media->getUrl() }}" target="_blank">
+                                        {{ trans('global.view_file') }}
+                                    </a>
+                                @endforeach
+                            </td>
+                            <td>
+                                @if($lesson->featured_photo)
+                                    <a href="{{ $lesson->featured_photo->getUrl() }}" target="_blank">
+                                        <img src="{{ $lesson->featured_photo->getUrl('thumb') }}" width="50px" height="50px">
+                                    </a>
+                                @endif
+                            </td>
+                            <td>
+                                <span style="display:none">{{ $lesson->status ?? '' }}</span>
+                                <input type="checkbox" disabled="disabled" {{ $lesson->status ? 'checked' : '' }}>
+                            </td>
+                            <td>
+                                {{ $lesson->course->title ?? '' }}
+                            </td>
+                            <td>
+                                @can('lesson_show')
+                                    <a class="btn btn-xs btn-primary" href="{{ route('admin.lessons.show', $lesson->id) }}">
+                                        {{ trans('global.view') }}
+                                    </a>
                                 @endcan
 
-                                <td>{{ $lesson->course->title or '' }}</td>
-                                <td>{{ $lesson->title }}</td>
-                                <td>{{ $lesson->position }}</td>
-                                <td>{{ Form::checkbox("free_lesson", 1, $lesson->free_lesson == 1 ? true : false, ["disabled"]) }}</td>
-                                <td>{{ Form::checkbox("published", 1, $lesson->published == 1 ? true : false, ["disabled"]) }}</td>
-                                @if( request('show_deleted') == 1 )
-                                <td>
-                                    {!! Form::open(array(
-                                        'style' => 'display: inline-block;',
-                                        'method' => 'POST',
-                                        'onsubmit' => "return confirm('".trans("global.app_are_you_sure")."');",
-                                        'route' => ['admin.lessons.restore', $lesson->id])) !!}
-                                    {!! Form::submit(trans('global.app_restore'), array('class' => 'btn btn-xs btn-success')) !!}
-                                    {!! Form::close() !!}
-                                                                    {!! Form::open(array(
-                                        'style' => 'display: inline-block;',
-                                        'method' => 'DELETE',
-                                        'onsubmit' => "return confirm('".trans("global.app_are_you_sure")."');",
-                                        'route' => ['admin.lessons.perma_del', $lesson->id])) !!}
-                                    {!! Form::submit(trans('global.app_permadel'), array('class' => 'btn btn-xs btn-danger')) !!}
-                                    {!! Form::close() !!}
-                                                                </td>
-                                @else
-                                <td>
-                                    @can('lesson_view')
-                                    <a href="{{ route('admin.lessons.show',[$lesson->id]) }}" class="btn btn-xs btn-primary">@lang('global.app_view')</a>
-                                    @endcan
-                                    @can('lesson_edit')
-                                    <a href="{{ route('admin.lessons.edit',[$lesson->id]) }}" class="btn btn-xs btn-info">@lang('global.app_edit')</a>
-                                    @endcan
-                                    @can('lesson_delete')
-{!! Form::open(array(
-                                        'style' => 'display: inline-block;',
-                                        'method' => 'DELETE',
-                                        'onsubmit' => "return confirm('".trans("global.app_are_you_sure")."');",
-                                        'route' => ['admin.lessons.destroy', $lesson->id])) !!}
-                                    {!! Form::submit(trans('global.app_delete'), array('class' => 'btn btn-xs btn-danger')) !!}
-                                    {!! Form::close() !!}
-                                    @endcan
-                                </td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    @else
-                        <tr>
-                            <td colspan="14">@lang('global.app_no_entries_in_table')</td>
+                                @can('lesson_edit')
+                                    <a class="btn btn-xs btn-info" href="{{ route('admin.lessons.edit', $lesson->id) }}">
+                                        {{ trans('global.edit') }}
+                                    </a>
+                                @endcan
+
+                                @can('lesson_delete')
+                                    <form action="{{ route('admin.lessons.destroy', $lesson->id) }}" method="POST" onsubmit="return confirm('{{ trans('global.areYouSure') }}');" style="display: inline-block;">
+                                        <input type="hidden" name="_method" value="DELETE">
+                                        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                                        <input type="submit" class="btn btn-xs btn-danger" value="{{ trans('global.delete') }}">
+                                    </form>
+                                @endcan
+
+                            </td>
+
                         </tr>
-                    @endif
+                    @endforeach
                 </tbody>
             </table>
         </div>
     </div>
-@stop
+</div>
 
-@section('javascript') 
-    <script>
-        @can('lesson_delete')
-            @if ( request('show_deleted') != 1 ) window.route_mass_crud_entries_destroy = '{{ route('admin.lessons.mass_destroy') }}'; @endif
-        @endcan
 
-    </script>
+
+@endsection
+@section('scripts')
+@parent
+<script>
+    $(function () {
+  let dtButtons = $.extend(true, [], $.fn.dataTable.defaults.buttons)
+@can('lesson_delete')
+  let deleteButtonTrans = '{{ trans('global.datatables.delete') }}'
+  let deleteButton = {
+    text: deleteButtonTrans,
+    url: "{{ route('admin.lessons.massDestroy') }}",
+    className: 'btn-danger',
+    action: function (e, dt, node, config) {
+      var ids = $.map(dt.rows({ selected: true }).nodes(), function (entry) {
+          return $(entry).data('entry-id')
+      });
+
+      if (ids.length === 0) {
+        alert('{{ trans('global.datatables.zero_selected') }}')
+
+        return
+      }
+
+      if (confirm('{{ trans('global.areYouSure') }}')) {
+        $.ajax({
+          headers: {'x-csrf-token': _token},
+          method: 'POST',
+          url: config.url,
+          data: { ids: ids, _method: 'DELETE' }})
+          .done(function () { location.reload() })
+      }
+    }
+  }
+  dtButtons.push(deleteButton)
+@endcan
+
+  $.extend(true, $.fn.dataTable.defaults, {
+    order: [[ 1, 'desc' ]],
+    pageLength: 100,
+  });
+  $('.datatable-Lesson:not(.ajaxTable)').DataTable({ buttons: dtButtons })
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function(e){
+        $($.fn.dataTable.tables(true)).DataTable()
+            .columns.adjust();
+    });
+})
+
+</script>
 @endsection

@@ -1,50 +1,87 @@
 <?php
+
 namespace App;
 
+use Carbon\Carbon;
+use Hash;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Hash;
+use Laravel\Passport\HasApiTokens;
 
-/**
- * Class User
- *
- * @package App
- * @property string $name
- * @property string $email
- * @property string $password
- * @property string $remember_token
-*/
 class User extends Authenticatable
 {
-    use Notifiable;
-    protected $fillable = ['name', 'email', 'password', 'remember_token'];
-    
-    
-    /**
-     * Hash password
-     * @param $input
-     */
+    use SoftDeletes, Notifiable, HasApiTokens;
+
+    public $table = 'users';
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $dates = [
+        'updated_at',
+        'created_at',
+        'deleted_at',
+        'email_verified_at',
+    ];
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'remember_token',
+        'email_verified_at',
+    ];
+
+    public function getIsAdminAttribute()
+    {
+        return $this->roles()->where('id', 1)->exists();
+
+    }
+
+    public function authorCourses()
+    {
+        return $this->belongsToMany(Course::class);
+
+    }
+
+    public function getEmailVerifiedAtAttribute($value)
+    {
+        return $value ? Carbon::createFromFormat('Y-m-d H:i:s', $value)->format(config('panel.date_format') . ' ' . config('panel.time_format')) : null;
+
+    }
+
+    public function setEmailVerifiedAtAttribute($value)
+    {
+        $this->attributes['email_verified_at'] = $value ? Carbon::createFromFormat(config('panel.date_format') . ' ' . config('panel.time_format'), $value)->format('Y-m-d H:i:s') : null;
+
+    }
+
     public function setPasswordAttribute($input)
     {
-        if ($input)
+        if ($input) {
             $this->attributes['password'] = app('hash')->needsRehash($input) ? Hash::make($input) : $input;
-    }
-    
-    
-    public function role()
-    {
-        return $this->belongsToMany(Role::class, 'role_user');
+        }
+
     }
 
-
-    public function isAdmin()
+    public function sendPasswordResetNotification($token)
     {
-        return $this->role()->where('role_id', 1)->first();
+        $this->notify(new ResetPassword($token));
+
     }
 
-    public function lessons()
+    public function roles()
     {
-        return $this->belongsToMany('App\Lesson', 'lesson_student');
+        return $this->belongsToMany(Role::class);
+
     }
 
 }

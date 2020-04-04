@@ -2,157 +2,78 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Permission;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StorePermissionsRequest;
-use App\Http\Requests\Admin\UpdatePermissionsRequest;
+use App\Http\Requests\MassDestroyPermissionRequest;
+use App\Http\Requests\StorePermissionRequest;
+use App\Http\Requests\UpdatePermissionRequest;
+use App\Permission;
+use Gate;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class PermissionsController extends Controller
 {
-    /**
-     * Display a listing of Permission.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        if (! Gate::allows('permission_access')) {
-            return abort(401);
-        }
+        abort_if(Gate::denies('permission_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-
-                $permissions = Permission::all();
+        $permissions = Permission::all();
 
         return view('admin.permissions.index', compact('permissions'));
     }
 
-    /**
-     * Show the form for creating new Permission.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
-        if (! Gate::allows('permission_create')) {
-            return abort(401);
-        }
+        abort_if(Gate::denies('permission_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         return view('admin.permissions.create');
     }
 
-    /**
-     * Store a newly created Permission in storage.
-     *
-     * @param  \App\Http\Requests\StorePermissionsRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(StorePermissionsRequest $request)
+    public function store(StorePermissionRequest $request)
     {
-        if (! Gate::allows('permission_create')) {
-            return abort(401);
-        }
         $permission = Permission::create($request->all());
 
-
-
         return redirect()->route('admin.permissions.index');
+
     }
 
-
-    /**
-     * Show the form for editing Permission.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
+    public function edit(Permission $permission)
     {
-        if (! Gate::allows('permission_edit')) {
-            return abort(401);
-        }
-        $permission = Permission::findOrFail($id);
+        abort_if(Gate::denies('permission_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         return view('admin.permissions.edit', compact('permission'));
     }
 
-    /**
-     * Update Permission in storage.
-     *
-     * @param  \App\Http\Requests\UpdatePermissionsRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(UpdatePermissionsRequest $request, $id)
+    public function update(UpdatePermissionRequest $request, Permission $permission)
     {
-        if (! Gate::allows('permission_edit')) {
-            return abort(401);
-        }
-        $permission = Permission::findOrFail($id);
         $permission->update($request->all());
 
-
-
         return redirect()->route('admin.permissions.index');
+
     }
 
-
-    /**
-     * Display Permission.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
+    public function show(Permission $permission)
     {
-        if (! Gate::allows('permission_view')) {
-            return abort(401);
-        }
-        $roles = \App\Role::whereHas('permission',
-                    function ($query) use ($id) {
-                        $query->where('id', $id);
-                    })->get();
+        abort_if(Gate::denies('permission_show'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $permission = Permission::findOrFail($id);
-
-        return view('admin.permissions.show', compact('permission', 'roles'));
+        return view('admin.permissions.show', compact('permission'));
     }
 
-
-    /**
-     * Remove Permission from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
+    public function destroy(Permission $permission)
     {
-        if (! Gate::allows('permission_delete')) {
-            return abort(401);
-        }
-        $permission = Permission::findOrFail($id);
+        abort_if(Gate::denies('permission_delete'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $permission->delete();
 
-        return redirect()->route('admin.permissions.index');
+        return back();
+
     }
 
-    /**
-     * Delete all selected Permission at once.
-     *
-     * @param Request $request
-     */
-    public function massDestroy(Request $request)
+    public function massDestroy(MassDestroyPermissionRequest $request)
     {
-        if (! Gate::allows('permission_delete')) {
-            return abort(401);
-        }
-        if ($request->input('ids')) {
-            $entries = Permission::whereIn('id', $request->input('ids'))->get();
+        Permission::whereIn('id', request('ids'))->delete();
 
-            foreach ($entries as $entry) {
-                $entry->delete();
-            }
-        }
+        return response(null, Response::HTTP_NO_CONTENT);
+
     }
-
 }

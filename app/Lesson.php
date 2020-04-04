@@ -1,63 +1,73 @@
 <?php
+
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia\HasMedia;
 use Spatie\MediaLibrary\HasMedia\HasMediaTrait;
-use Spatie\MediaLibrary\HasMedia\Interfaces\HasMedia;
+use Spatie\MediaLibrary\Models\Media;
 
-/**
- * Class Lesson
- *
- * @package App
- * @property string $course
- * @property string $title
- * @property string $slug
- * @property string $lesson_image
- * @property text $short_text
- * @property text $full_text
- * @property integer $position
- * @property string $downloadable_files
- * @property tinyInteger $free_lesson
- * @property tinyInteger $published
-*/
 class Lesson extends Model implements HasMedia
 {
     use SoftDeletes, HasMediaTrait;
 
-    protected $fillable = ['title', 'slug', 'lesson_image', 'short_text', 'full_text', 'position', 'downloadable_files', 'free_lesson', 'published', 'course_id'];
-    
+    public $table = 'lessons';
 
-    /**
-     * Set to null if empty
-     * @param $input
-     */
-    public function setCourseIdAttribute($input)
+    protected $appends = [
+        'joined_files',
+        'featured_photo',
+    ];
+
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    protected $fillable = [
+        'slug',
+        'title',
+        'price',
+        'status',
+        'content',
+        'course_id',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'description',
+        'free_course',
+    ];
+
+    public function registerMediaConversions(Media $media = null)
     {
-        $this->attributes['course_id'] = $input ? $input : null;
+        $this->addMediaConversion('thumb')->width(50)->height(50);
+
     }
 
-    /**
-     * Set attribute to money format
-     * @param $input
-     */
-    public function setPositionAttribute($input)
+    public function getJoinedFilesAttribute()
     {
-        $this->attributes['position'] = $input ? $input : null;
+        return $this->getMedia('joined_files');
+
     }
-    
+
+    public function getFeaturedPhotoAttribute()
+    {
+        $file = $this->getMedia('featured_photo')->last();
+
+        if ($file) {
+            $file->url       = $file->getUrl();
+            $file->thumbnail = $file->getUrl('thumb');
+        }
+
+        return $file;
+
+    }
+
     public function course()
     {
-        return $this->belongsTo(Course::class, 'course_id')->withTrashed();
+        return $this->belongsTo(Course::class, 'course_id');
+
     }
 
-    public function test() {
-        return $this->hasOne('App\Test');
-    }
-
-    public function students()
-    {
-        return $this->belongsToMany('App\User', 'lesson_student')->withTimestamps();
-    }
-    
 }
